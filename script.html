@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yolklets with Slower Thirst Bar Depletion</title>
+  <style>
+    body {
+      background-color: #1a1a1a; /* Very dark grey */
+      margin: 0;
+      overflow: auto;
+    }
+    #imageContainer {
+      position: relative;
+      width: 1260px; /* Roaming area width */
+      height: 660px; /* Roaming area height */
+      border: 1px dashed gray; /* Optional visual boundary */
+    }
+    .yolklet {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 200px; /* Yolklet size */
+      transition: box-shadow 0.3s ease, border 0.3s ease;
+    }
+    .yolklet.thirsty {
+      border: 5px solid red; /* Visual indicator for thirst */
+      box-shadow: 0px 0px 15px rgba(255, 0, 0, 0.75);
+    }
+    .thirst-bar-container {
+      position: absolute;
+      bottom: 220px; /* Position above yolklet's head */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 10px;
+      background-color: #444; /* Dark gray background */
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .thirst-bar {
+      height: 100%;
+      background-color: #0099ff; /* Blue for thirst bar */
+      width: 100%; /* Full width initially */
+      transition: width 0.3s ease; /* Smooth shrink effect */
+    }
+    #pond {
+      position: absolute;
+      width: 500px; /* Pond size */
+      height: 250px; /* Pond height */
+      object-fit: contain; /* Prevents cropping of the image */
+    }
+  </style>
+</head>
+<body>
+  <div id="imageContainer">
+    <!-- Randomized fixed pond -->
+    <img id="pond" src="yolk pond.png" alt="Pond" />
+  </div>
+  <script>
+    const container = document.getElementById("imageContainer");
+    const pond = document.getElementById("pond");
+    const numberOfYolklets = 5;
+
+    // Function to place the pond in a random fixed location
+    function initializePond() {
+      const containerWidth = 1260;
+      const containerHeight = 660;
+      const pondWidth = 500; // Pond size
+      const pondHeight = 250; // Pond size
+      const padding = 20; // Prevent the pond from touching the edges
+
+      const randomX = Math.random() * (containerWidth - pondWidth - padding * 2) + padding;
+      const randomY = Math.random() * (containerHeight - pondHeight - padding * 2) + padding;
+
+      pond.style.left = randomX + "px";
+      pond.style.top = randomY + "px";
+    }
+
+    // Initialize the pond's random position
+    initializePond();
+
+    function createYolklet() {
+      const yolklet = document.createElement("img");
+      yolklet.src = "yolklet guy.png"; // Replace with the correct path to your yolklet image
+      yolklet.className = "yolklet";
+
+      const thirstBarContainer = document.createElement("div");
+      thirstBarContainer.className = "thirst-bar-container";
+
+      const thirstBar = document.createElement("div");
+      thirstBar.className = "thirst-bar";
+
+      thirstBarContainer.appendChild(thirstBar);
+      container.appendChild(yolklet);
+      container.appendChild(thirstBarContainer);
+
+      let posX = Math.random() * 1260; // Random starting X position
+      let posY = Math.random() * 660; // Random starting Y position
+      let isThirsty = false; // Yolklet thirst state
+      let thirstLevel = 100; // Thirst level (0 to 100)
+
+      // Get a random point within the container
+      function getRandomPoint() {
+        return {
+          x: Math.random() * 1260,
+          y: Math.random() * 660,
+        };
+      }
+
+      // Get the center of the pond
+      function getPondPoint() {
+        const pondCenterX = pond.offsetLeft + pond.offsetWidth / 2;
+        const pondCenterY = pond.offsetTop + pond.offsetHeight / 2;
+        return { x: pondCenterX, y: pondCenterY };
+      }
+
+      // Check if the yolklet can detect the pond based on a limited range
+      function canDetectPond() {
+        const pondPoint = getPondPoint();
+        const dx = pondPoint.x - posX;
+        const dy = pondPoint.y - posY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= 300; // Limited vision: only within 300px
+      }
+
+      // Check if the yolklet is within a 200px range of the pond to reset thirst
+      function isNearPond() {
+        const pondPoint = getPondPoint();
+        const dx = pondPoint.x - posX;
+        const dy = pondPoint.y - posY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= 200; // Return true if within 200px
+      }
+
+      // Update thirst bar
+      function updateThirstBar() {
+        thirstBar.style.width = thirstLevel + "%";
+        thirstBar.style.backgroundColor = "#0099ff"; // Blue for thirst bar
+      }
+
+      // Movement logic for the yolklet
+      function walkToRandomPoint() {
+        // If thirsty, only head to the pond if it's within detection range
+        const target = isThirsty && canDetectPond() ? getPondPoint() : getRandomPoint();
+        const speed = 3; // Pixels per frame
+
+        function move() {
+          const dx = target.x - posX;
+          const dy = target.y - posY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < speed) {
+            posX = target.x;
+            posY = target.y;
+            yolklet.style.left = posX + "px";
+            yolklet.style.top = posY + "px";
+            thirstBarContainer.style.left = posX + "px";
+            thirstBarContainer.style.top = posY - 30 + "px"; // Position above yolklet
+
+            if (isThirsty && isNearPond()) {
+              // At the pond and within 200px range: reset thirst level
+              thirstLevel = 100;
+              isThirsty = false;
+              yolklet.classList.remove("thirsty");
+              updateThirstBar();
+              setTimeout(walkToRandomPoint, 1000);
+            } else {
+              setTimeout(walkToRandomPoint, 1000);
+            }
+          } else {
+            posX += (dx / distance) * speed;
+            posY += (dy / distance) * speed;
+            yolklet.style.left = posX + "px";
+            yolklet.style.top = posY + "px";
+            thirstBarContainer.style.left = posX + "px";
+            thirstBarContainer.style.top = posY - 30 + "px"; // Position above yolklet
+            requestAnimationFrame(move);
+          }
+        }
+        requestAnimationFrame(move);
+      }
+
+      // Periodically decrease thirst level more slowly
+      setInterval(() => {
+        thirstLevel -= 2; // Decrease thirst level slower (by 2 every 2 seconds)
+        if (thirstLevel <= 30 && !isThirsty) {
+          // Yolklet becomes thirsty below 30%
+          isThirsty = true;
+          yolklet.classList.add("thirsty");
+        }
+        if (thirstLevel <= 0) {
+          thirstLevel = 0; // Cap at 0
+          // Remove yolklet when thirst runs out
+          thirstBarContainer.remove();
+          yolklet.remove();
+          return;
+        }
+        updateThirstBar(); // Update the thirst bar display
+      }, 2000); // Decrease every 2 seconds
+
+      walkToRandomPoint();
+    }
+
+    // Create multiple yolklets
+    for (let i = 0; i < numberOfYolklets; i++) {
+      createYolklet();
+    }
+  </script>
+</body>
+</html>
